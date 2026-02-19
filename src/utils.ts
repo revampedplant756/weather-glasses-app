@@ -20,15 +20,37 @@ export function getWeatherEmoji(icon: string): string {
 }
 
 /**
- * Format current weather data for display on glasses
+ * Format coordinates for display
  */
-export function formatCurrentWeather(weather: WeatherData): string {
+export function formatCoordinates(lat: number, lng: number): string {
+  const latDir = lat >= 0 ? 'N' : 'S';
+  const lngDir = lng >= 0 ? 'E' : 'W';
+  
+  return `${Math.abs(lat).toFixed(4)}°${latDir}, ${Math.abs(lng).toFixed(4)}°${lngDir}`;
+}
+
+/**
+ * Format current weather data for display on glasses with enhanced location info
+ */
+export function formatCurrentWeather(
+  weather: WeatherData, 
+  coordinates?: { lat: number; lng: number }
+): string {
   const emoji = getWeatherEmoji(weather.icon);
   const location = weather.country ? `${weather.location}, ${weather.country}` : weather.location;
   
-  return [
+  const lines = [
     `${emoji} ${location}`,
-    '',
+    ''
+  ];
+
+  // Add coordinates if available
+  if (coordinates) {
+    lines.push(`📍 ${formatCoordinates(coordinates.lat, coordinates.lng)}`);
+    lines.push('');
+  }
+
+  lines.push(
     `${weather.temperature}°C`,
     `Feels like ${weather.feelsLike}°C`,
     '',
@@ -37,26 +59,38 @@ export function formatCurrentWeather(weather: WeatherData): string {
     `Wind: ${weather.windSpeed} km/h`,
     '',
     '🔄 Say "forecast" for 5-day'
-  ].join('\n');
+  );
+  
+  return lines.join('\n');
 }
 
 /**
- * Format forecast data for display on glasses
+ * Format forecast data for display on glasses with enhanced location info
  */
-export function formatForecast(forecast: ForecastData[], location: string): string {
-  const header = `📅 5-Day Forecast\n${location}\n`;
+export function formatForecast(
+  forecast: ForecastData[], 
+  location: string,
+  coordinates?: { lat: number; lng: number }
+): string {
+  const lines = [`📅 5-Day Forecast`, location];
+  
+  // Add coordinates if available
+  if (coordinates) {
+    lines.push(`📍 ${formatCoordinates(coordinates.lat, coordinates.lng)}`);
+  }
+  
+  lines.push(''); // Empty line before forecast
   
   const forecastLines = forecast.map(day => {
     const emoji = getWeatherEmoji(day.icon);
     return `${emoji} ${day.dayName}: ${day.high}°/${day.low}°`;
   });
   
-  return [
-    header,
-    ...forecastLines,
-    '',
-    '🔄 Say "current" to go back'
-  ].join('\n');
+  lines.push(...forecastLines);
+  lines.push('');
+  lines.push('🔄 Say "current" to go back');
+  
+  return lines.join('\n');
 }
 
 /**
@@ -111,4 +145,11 @@ export function convertTemperature(temp: number, fromUnit: 'C' | 'F', toUnit: 'C
   }
   
   return temp;
+}
+
+/**
+ * Get location type indicator
+ */
+export function getLocationTypeIndicator(hasCoordinates: boolean): string {
+  return hasCoordinates ? '🎯' : '🏙️';
 }
