@@ -1,12 +1,12 @@
 import { AppServer, AppSession } from '@mentraos/sdk';
 import { WeatherService, WeatherData, ForecastData } from './weather-service';
-import { formatCurrentWeather, formatForecast, parseLocationFromText, getLocationTypeIndicator } from './utils';
+import { formatCurrentWeather, formatForecast, parseLocationFromText } from './utils';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 interface SessionState {
-  lastLocation?: { city: string; country?: string; lat?: number; lng?: number };
+  lastLocation?: string;
   showingForecast: boolean;
   currentWeather?: WeatherData;
   forecast?: ForecastData[];
@@ -34,7 +34,7 @@ class WeatherGlassesApp extends AppServer {
     
     // Welcome message
     session.layouts.showTextWall(
-      '🌤️ Weather Assistant\n\nSay "weather" or ask about weather in any city!\n\nExamples:\n• "Weather in New York"\n• "What\'s the weather like?"\n• "Show forecast"'
+      '🌤️ Weather Assistant\n\nSay "weather" or ask about weather in any city!\n\nExamples:\n• "Weather in New York"\n• "Weather in London"\n• "Show forecast"'
     );
 
     // Set up voice command handling
@@ -58,29 +58,6 @@ class WeatherGlassesApp extends AppServer {
         this.handleButtonPress(session, state, data.button);
       }
     });
-
-    // Try to get location-based weather automatically
-    if (session.capabilities?.hasLocation) {
-      try {
-        session.location.subscribeToStream({ accuracy: 'high' }, async (locationData) => {
-          if (!state.lastLocation) {
-            const locationIndicator = getLocationTypeIndicator(true);
-            state.lastLocation = { 
-              city: `${locationIndicator} Current Location`, 
-              lat: locationData.lat, 
-              lng: locationData.lng 
-            };
-            session.logger.info('Auto-detected location', { 
-              lat: locationData.lat, 
-              lng: locationData.lng 
-            });
-            await this.showCurrentWeather(session, state);
-          }
-        });
-      } catch (error) {
-        session.logger.info('Location not available, using voice commands only');
-      }
-    }
   }
 
   private async handleVoiceCommand(session: AppSession, state: SessionState, text: string) {
@@ -89,13 +66,10 @@ class WeatherGlassesApp extends AppServer {
       const location = parseLocationFromText(text);
       
       if (location) {
-        const locationIndicator = getLocationTypeIndicator(false);
-        state.lastLocation = { city: `${locationIndicator} ${location}` };
-        await this.showCurrentWeather(session, state);
-      } else if (state.lastLocation) {
+        state.lastLocation = location;
         await this.showCurrentWeather(session, state);
       } else {
-        session.layouts.showTextWall('📍 Please specify a location, like "weather in London" or enable location access.');
+        session.layouts.showTextWall('📍 Please specify a location, like "weather in London".');
       }
     } else if (text.includes('forecast')) {
       if (state.lastLocation) {
@@ -109,15 +83,9 @@ class WeatherGlassesApp extends AppServer {
       } else {
         session.layouts.showTextWall('📍 Please specify a location first.');
       }
-    } else if (text.includes('location') || text.includes('where')) {
-      if (state.lastLocation) {
-        this.showLocationInfo(session, state);
-      } else {
-        session.layouts.showTextWall('📍 No location set. Ask for weather in a city first.');
-      }
     } else if (text.includes('help')) {
       session.layouts.showTextWall(
-        '🌤️ Weather Commands:\n\n• "Weather in [city]"\n• "Show forecast"\n• "Current weather"\n• "Where am I?"\n• "Help"'
+        '🌤️ Weather Commands:\n\n• "Weather in [city]"\n• "Show forecast"\n• "Current weather"\n• "Help"'
       );
     }
   }
@@ -141,62 +109,23 @@ class WeatherGlassesApp extends AppServer {
     }
   }
 
-  private showLocationInfo(session: AppSession, state: SessionState) {
-    if (!state.lastLocation) return;
-    
-    const lines = ['📍 Current Location:', '', state.lastLocation.city];
-    
-    if (state.lastLocation.lat && state.lastLocation.lng) {
-      const lat = state.lastLocation.lat;
-      const lng = state.lastLocation.lng;
-      const latDir = lat >= 0 ? 'N' : 'S';
-      const lngDir = lng >= 0 ? 'E' : 'W';
-      
-      lines.push('');
-      lines.push(`Coordinates:`);
-      lines.push(`${Math.abs(lat).toFixed(4)}°${latDir}, ${Math.abs(lng).toFixed(4)}°${lngDir}`);
-    }
-    
-    lines.push('');
-    lines.push('🔄 Say "weather" to continue');
-    
-    session.layouts.showTextWall(lines.join('\n'));
-  }
-
   private async showCurrentWeather(session: AppSession, state: SessionState) {
     if (!state.lastLocation) return;
     
     session.layouts.showTextWall('🔄 Getting weather data...');
     
     try {
-      let weatherData: WeatherData;
-      
-      if (state.lastLocation.lat && state.lastLocation.lng) {
-        weatherData = await this.weatherService.getCurrentWeatherByCoords(
-          state.lastLocation.lat, 
-          state.lastLocation.lng
-        );
-      } else {
-        weatherData = await this.weatherService.getCurrentWeather(
-          state.lastLocation.city.replace(/^[🎯🏙️]\s*/, '') // Remove location indicators
-        );
-      }
+      const weatherData = await this.weatherService.getCurrentWeather(state.lastLocation);
       
       state.currentWeather = weatherData;
       state.showingForecast = false;
       
-      // Pass coordinates to formatter if available
-      const coordinates = (state.lastLocation.lat && state.lastLocation.lng) 
-        ? { lat: state.lastLocation.lat, lng: state.lastLocation.lng }
-        : undefined;
-      
-      const formatted = formatCurrentWeather(weatherData, coordinates);
+      const formatted = formatCurrentWeather(weatherData);
       session.layouts.showTextWall(formatted);
       
       session.logger.info('Weather data displayed', { 
-        location: state.lastLocation.city,
-        temperature: weatherData.temperature,
-        hasCoordinates: !!coordinates
+        location: state.lastLocation,
+        temperature: weatherData.temperature
       });
     } catch (error) {
       session.logger.error('Failed to get weather data', { error, location: state.lastLocation });
@@ -210,34 +139,17 @@ class WeatherGlassesApp extends AppServer {
     session.layouts.showTextWall('🔄 Getting forecast...');
     
     try {
-      let forecastData: ForecastData[];
-      
-      if (state.lastLocation.lat && state.lastLocation.lng) {
-        forecastData = await this.weatherService.getForecastByCoords(
-          state.lastLocation.lat,
-          state.lastLocation.lng
-        );
-      } else {
-        forecastData = await this.weatherService.getForecast(
-          state.lastLocation.city.replace(/^[🎯🏙️]\s*/, '') // Remove location indicators
-        );
-      }
+      const forecastData = await this.weatherService.getForecast(state.lastLocation);
       
       state.forecast = forecastData;
       state.showingForecast = true;
       
-      // Pass coordinates to formatter if available
-      const coordinates = (state.lastLocation.lat && state.lastLocation.lng) 
-        ? { lat: state.lastLocation.lat, lng: state.lastLocation.lng }
-        : undefined;
-      
-      const formatted = formatForecast(forecastData, state.lastLocation.city, coordinates);
+      const formatted = formatForecast(forecastData, state.lastLocation);
       session.layouts.showTextWall(formatted);
       
       session.logger.info('Forecast displayed', { 
-        location: state.lastLocation.city,
-        days: forecastData.length,
-        hasCoordinates: !!coordinates
+        location: state.lastLocation,
+        days: forecastData.length
       });
     } catch (error) {
       session.logger.error('Failed to get forecast', { error, location: state.lastLocation });
