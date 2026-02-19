@@ -1,6 +1,6 @@
 # Weather Glasses App
 
-A hands-free weather app for Even Realities smart glasses that provides current conditions and forecasts through voice commands.
+A hands-free weather app for smart glasses that provides current conditions and forecasts for any city through voice commands.
 
 ## Setup Instructions
 
@@ -40,7 +40,7 @@ OPENWEATHER_API_KEY=your_openweather_api_key_here
    - **Package Name**: `com.yourname.weatherglasses` (match your .env)
    - **Webhook URL**: `https://your-ngrok-url.ngrok.app/webhook`
    - **API Key**: Your MentraOS API key
-   - **Permissions**: `MICROPHONE`, `LOCATION`
+   - **Permissions**: `MICROPHONE`
 
 ### 5. Get OpenWeatherMap API Key
 
@@ -75,8 +75,7 @@ bun run start
 
 ### Voice Commands
 - **"Weather in [city]"** - Get current weather for any city
-- **"What's the weather like?"** - Get weather for your current location
-- **"Show forecast"** - View 5-day forecast
+- **"Show forecast"** - View 5-day forecast for the last requested city
 - **"Current weather"** - Return to current conditions
 - **"Help"** - Show available commands
 
@@ -87,7 +86,7 @@ bun run start
 ### Features
 - 🌤️ Current weather conditions with temperature, humidity, wind
 - 📅 5-day weather forecast
-- 📍 Location-based weather (automatic or voice-specified)
+- 🏙️ Support for any city worldwide
 - 🎙️ Natural voice command parsing
 - 🔄 Easy switching between current and forecast views
 
@@ -103,7 +102,6 @@ bun run start
 ## Required Permissions
 
 - **MICROPHONE** - For voice commands and speech recognition
-- **LOCATION** - For automatic location-based weather
 
 ## Deployment
 
@@ -131,11 +129,6 @@ For production deployment:
 - Verify OpenWeatherMap API key is valid
 - Check API quota limits
 - Ensure city names are spelled correctly
-
-### Location Not Working
-- Verify `LOCATION` permission is enabled
-- Check if location services are enabled on glasses
-- Try specifying cities by voice as fallback
 
 ## API Usage
 

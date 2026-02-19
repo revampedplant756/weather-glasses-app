@@ -50,23 +50,6 @@ export class WeatherService {
     }
   }
 
-  async getCurrentWeatherByCoords(lat: number, lng: number): Promise<WeatherData> {
-    try {
-      const response = await axios.get(`${this.baseUrl}/weather`, {
-        params: {
-          lat,
-          lon: lng,
-          appid: this.apiKey,
-          units: 'metric'
-        }
-      });
-
-      return this.transformWeatherData(response.data);
-    } catch (error) {
-      throw new Error('Failed to fetch weather data by coordinates');
-    }
-  }
-
   async getForecast(city: string): Promise<ForecastData[]> {
     try {
       const response = await axios.get(`${this.baseUrl}/forecast`, {
@@ -83,23 +66,6 @@ export class WeatherService {
         throw new Error(`City "${city}" not found`);
       }
       throw new Error('Failed to fetch forecast data');
-    }
-  }
-
-  async getForecastByCoords(lat: number, lng: number): Promise<ForecastData[]> {
-    try {
-      const response = await axios.get(`${this.baseUrl}/forecast`, {
-        params: {
-          lat,
-          lon: lng,
-          appid: this.apiKey,
-          units: 'metric'
-        }
-      });
-
-      return this.transformForecastData(response.data);
-    } catch (error) {
-      throw new Error('Failed to fetch forecast data by coordinates');
     }
   }
 

@@ -34,7 +34,7 @@ class WeatherGlassesApp extends AppServer {
     
     // Welcome message
     session.layouts.showTextWall(
-      '🌤️ Weather Assistant\n\nSay "weather" or ask about weather in any city!\n\nExamples:\n• "Weather in New York"\n• "Weather in London"\n• "Show forecast"'
+      '🌤️ Weather Assistant\n\nAsk about weather in any city!\n\nExamples:\n• "Weather in New York"\n• "Weather in London"\n• "Show forecast"\n• "Help"'
     );
 
     // Set up voice command handling
@@ -102,7 +102,7 @@ class WeatherGlassesApp extends AppServer {
         break;
       case 'back':
         session.layouts.showTextWall(
-          '🌤️ Weather Assistant\n\nSay "weather" or ask about weather in any city!'
+          '🌤️ Weather Assistant\n\nAsk about weather in any city!'
         );
         state.showingForecast = false;
         break;
